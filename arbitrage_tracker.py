@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 CS2 Skin Arbitrage Tracker
-Monitors price differences between Steam Market and Skinport for arbitrage opportunities.
+Monitors price differences between Steam Market lowest and median prices.
 """
 
 import requests
@@ -16,26 +16,27 @@ import sys
 
 console = Console()
 
-# Skins to monitor
+# Items to monitor - using common items with active listings
 SKINS = [
-    "Operation Breakout Case",
-    "Sticker | Krakow 2017 Autograph Legends",
-    "Sticker | DreamHack 2014 (Holo/Foil)"
+    "Operation Breakout Weapon Case",
+    "AK-47 | Redline (Field-Tested)",
+    "AWP | Asiimov (Field-Tested)"
 ]
 
 # Rate limiting delays
 STEAM_DELAY = 1.5  # seconds between Steam requests
-SKINPORT_DELAY = 0.5  # seconds between Skinport requests
 REFRESH_INTERVAL = 300  # 5 minutes
 
 
 class SkinPriceTracker:
     def __init__(self):
         self.steam_session = requests.Session()
-        self.skinport_session = requests.Session()
+        self.steam_session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
         
-    def get_steam_price(self, skin_name):
-        """Fetch price from Steam Market API"""
+    def get_steam_prices(self, skin_name):
+        """Fetch both lowest and median prices from Steam Market API"""
         try:
             url = "https://steamcommunity.com/market/priceoverview/"
             params = {
@@ -49,48 +50,33 @@ class SkinPriceTracker:
             
             if response.status_code == 200:
                 data = response.json()
-                if data.get('success') and 'lowest_price' in data:
-                    # Parse price string like "$12.34" to float
-                    price_str = data['lowest_price'].replace('$', '').replace(',', '')
-                    return float(price_str)
+                if data.get('success'):
+                    lowest_price = None
+                    median_price = None
+                    
+                    if 'lowest_price' in data:
+                        price_str = data['lowest_price'].replace('$', '').replace(',', '')
+                        lowest_price = float(price_str)
+                    
+                    if 'median_price' in data:
+                        median_str = data['median_price'].replace('$', '').replace(',', '')
+                        median_price = float(median_str)
+                    
+                    if lowest_price or median_price:
+                        return {'lowest': lowest_price, 'median': median_price}
+                    else:
+                        console.print(f"[yellow]Steam: '{skin_name}' exists but no price data[/yellow]")
+                else:
+                    console.print(f"[yellow]Steam API returned success=false for '{skin_name}'[/yellow]")
+            else:
+                console.print(f"[yellow]Steam API status code {response.status_code}[/yellow]")
             return None
             
         except Exception as e:
             console.print(f"[red]Error fetching Steam price for {skin_name}: {e}[/red]")
             return None
     
-    def get_skinport_price(self, skin_name):
-        """Fetch price from Skinport API"""
-        try:
-            # Skinport API endpoint for item prices
-            url = "https://api.skinport.com/v1/items"
-            params = {
-                'app_id': 730,
-                'currency': 'USD'
-            }
-            
-            response = self.skinport_session.get(url, params=params, timeout=10)
-            time.sleep(SKINPORT_DELAY)  # Rate limiting
-            
-            if response.status_code == 200:
-                data = response.json()
-                
-                # Search for matching item in the response
-                for item in data:
-                    if item.get('market_hash_name') == skin_name:
-                        # Get the minimum price from suggested_price or min_price
-                        price = item.get('min_price') or item.get('suggested_price')
-                        if price:
-                            return float(price)
-                
-                # If not found in the list, return None
-                return None
-            
-            return None
-            
-        except Exception as e:
-            console.print(f"[red]Error fetching Skinport price for {skin_name}: {e}[/red]")
-            return None
+
     
     def calculate_gap(self, steam_price, skinport_price):
         """Calculate percentage gap between prices"""
@@ -107,16 +93,26 @@ class SkinPriceTracker:
         for skin in SKINS:
             console.print(f"[cyan]Fetching prices for: {skin}[/cyan]")
             
-            steam_price = self.get_steam_price(skin)
-            skinport_price = self.get_skinport_price(skin)
-            gap = self.calculate_gap(steam_price, skinport_price)
+            prices = self.get_steam_prices(skin)
             
-            results.append({
-                'skin': skin,
-                'steam_price': steam_price,
-                'skinport_price': skinport_price,
-                'gap': gap
-            })
+            if prices:
+                lowest = prices.get('lowest')
+                median = prices.get('median')
+                gap = self.calculate_gap(lowest, median)
+                
+                results.append({
+                    'skin': skin,
+                    'lowest_price': lowest,
+                    'median_price': median,
+                    'gap': gap
+                })
+            else:
+                results.append({
+                    'skin': skin,
+                    'lowest_price': None,
+                    'median_price': None,
+                    'gap': None
+                })
         
         # Sort by gap (largest first), None values at the end
         results.sort(key=lambda x: x['gap'] if x['gap'] is not None else -999999, reverse=True)
@@ -125,11 +121,11 @@ class SkinPriceTracker:
     
     def create_table(self, results):
         """Create a rich table with price data"""
-        table = Table(title="CS2 Skin Arbitrage Tracker", show_header=True, header_style="bold magenta")
+        table = Table(title="CS2 Skin Arbitrage Tracker (Steam Market)", show_header=True, header_style="bold magenta")
         
         table.add_column("Skin", style="cyan", width=40)
-        table.add_column("Steam Price", justify="right", style="yellow")
-        table.add_column("Skinport Price", justify="right", style="yellow")
+        table.add_column("Lowest Price", justify="right", style="yellow")
+        table.add_column("Median Price", justify="right", style="yellow")
         table.add_column("Gap %", justify="right")
         table.add_column("Status", justify="center")
         
@@ -138,13 +134,13 @@ class SkinPriceTracker:
         
         for item in results:
             skin = item['skin']
-            steam_price = item['steam_price']
-            skinport_price = item['skinport_price']
+            lowest_price = item['lowest_price']
+            median_price = item['median_price']
             gap = item['gap']
             
             # Format prices
-            steam_str = f"${steam_price:.2f}" if steam_price else "N/A"
-            skinport_str = f"${skinport_price:.2f}" if skinport_price else "N/A"
+            lowest_str = f"${lowest_price:.2f}" if lowest_price else "N/A"
+            median_str = f"${median_price:.2f}" if median_price else "N/A"
             gap_str = f"{gap:.2f}%" if gap is not None else "N/A"
             
             # Determine if it's an opportunity (gap > 12%)
@@ -157,9 +153,9 @@ class SkinPriceTracker:
                 status_style = "bold green"
                 opportunities += 1
                 
-                # Calculate potential profit (assuming buying from Skinport, selling on Steam)
-                if steam_price and skinport_price:
-                    potential_profit = steam_price - skinport_price
+                # Calculate potential profit (difference between lowest and median)
+                if lowest_price and median_price:
+                    potential_profit = abs(lowest_price - median_price)
                     total_potential_profit += potential_profit
             elif gap is not None and gap > 0:
                 gap_style = "white"
@@ -176,8 +172,8 @@ class SkinPriceTracker:
             
             table.add_row(
                 skin,
-                steam_str,
-                skinport_str,
+                lowest_str,
+                median_str,
                 Text(gap_str, style=gap_style),
                 Text(status, style=status_style)
             )

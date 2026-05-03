@@ -1,15 +1,15 @@
 # CS2 Skin Arbitrage Tracker
 
-A Python-based arbitrage tracker for Counter-Strike 2 (CS2) skins that monitors price differences between Steam Market and Skinport to identify profitable trading opportunities.
+A Python-based arbitrage tracker for Counter-Strike 2 (CS2) skins that monitors price differences between Steam Market's lowest price and median price to identify potential trading opportunities.
 
 ## Features
 
-- 📊 **Real-time Price Tracking**: Fetches current prices from Steam Market and Skinport APIs
-- 💹 **Gap Analysis**: Calculates percentage difference between platforms
-- 🎯 **Opportunity Detection**: Highlights gaps above 12% in green as real opportunities
+- 📊 **Real-time Price Tracking**: Fetches current lowest and median prices from Steam Market API
+- 💹 **Gap Analysis**: Calculates percentage difference between lowest and median prices
+- 🎯 **Opportunity Detection**: Highlights gaps above 12% in green as potential opportunities
 - 📈 **Smart Sorting**: Automatically sorts skins by gap size (largest first)
 - 🔄 **Auto-Refresh**: Updates prices every 5 minutes automatically
-- ⏱️ **Rate Limiting**: Built-in delays (1.5s for Steam, 0.5s for Skinport) to respect API limits
+- ⏱️ **Rate Limiting**: Built-in delays (1.5s between Steam requests) to respect API limits
 - 🎨 **Beautiful Display**: Uses Rich library for colorful, formatted tables
 - 📊 **Summary Stats**: Shows total opportunities and potential profit
 
@@ -67,12 +67,12 @@ To stop the tracker, press `Ctrl+C`.
 ## Output Example
 
 ```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
-┃ Skin                               ┃ Steam Price ┃ Skinport Price ┃  Gap % ┃ Status ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│ AK-47 | Redline (Field-Tested)    │      $45.23 │         $38.50 │ 17.48% │ 🟢 BUY │
-│ AWP | Asiimov (Field-Tested)      │      $89.99 │         $82.00 │  9.74% │ ⚪ LOW │
-└────────────────────────────────────┴─────────────┴────────────────┴────────┴────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
+┃ Skin                               ┃ Lowest Price ┃ Median Price ┃  Gap % ┃ Status ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
+│ AK-47 | Redline (Field-Tested)    │       $45.01 │       $45.21 │  0.44% │ ⚪ LOW │
+│ AWP | Asiimov (Field-Tested)      │       $89.50 │       $90.12 │  0.69% │ ⚪ LOW │
+└────────────────────────────────────┴──────────────┴──────────────┴────────┴────────┘
 
 ╭─ Summary ─────────────────────────────────────╮
 │ 🎯 Opportunities Found: 1                      │
@@ -94,25 +94,23 @@ You can modify the following constants in `arbitrage_tracker.py`:
 
 - `SKINS`: List of skins to monitor
 - `STEAM_DELAY`: Delay between Steam API requests (default: 1.5s)
-- `SKINPORT_DELAY`: Delay between Skinport API requests (default: 0.5s)
 - `REFRESH_INTERVAL`: Time between full refresh cycles (default: 300s / 5 minutes)
 
 ## API Rate Limits
 
-The tracker respects API rate limits:
+The tracker respects Steam Market API rate limits:
 - **Steam Market**: 1.5 second delay between requests
-- **Skinport**: 0.5 second delay between requests
 
-Adjust these values in the script if you encounter rate limiting issues.
+Adjust the `STEAM_DELAY` value in the script if you encounter rate limiting issues.
 
 ## Notes
 
 - Prices are in USD
-- Steam prices use the lowest market price
-- Skinport prices use the minimum available price
-- The gap calculation is: `(Steam Price - Skinport Price) / Skinport Price × 100`
+- Compares Steam Market's lowest listing price vs median sale price
+- The gap calculation is: `(Lowest Price - Median Price) / Median Price × 100`
 - Network errors and API failures are handled gracefully
-- Potential profit calculation assumes buying from the cheaper platform and selling on the more expensive one (excluding fees)
+- Potential profit calculation is based on the difference between lowest and median prices
+- For actual arbitrage between different platforms, you would need to integrate additional marketplace APIs (Skinport, CSGOFloat, Buff163, etc.)
 
 ## Dependencies
 
