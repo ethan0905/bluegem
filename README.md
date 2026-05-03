@@ -225,6 +225,77 @@ Found 25 items including:
 - 🔴 **NO** - Negative gap (more expensive on Steam)
 - ⚫ **ERR** - Error fetching price data
 
+## Finding Correct Item Names
+
+Getting the exact item name is crucial for the trackers to work properly. Steam Market requires precise names including the year, condition, and special designations.
+
+### Using Buff163 Database Search
+
+The easiest way to find the correct item name is using the Buff163 price tracker's interactive search:
+
+**Method 1: Interactive Search**
+```bash
+python3 buff163.py -i
+```
+
+Then:
+1. Select option **3** (Search by keyword)
+2. Enter your search term (e.g., "karambit doppler", "dreamhack 2014", "krakow")
+3. The tool will display all matching items with exact names
+
+**Example:**
+```
+Select option (1-4): 3
+Enter search keyword: dreamhack 2014
+
+Search Results for 'dreamhack 2014'
+┃ Item Name                                               ┃
+┃ DreamHack 2014 Legends (Holo-Foil)                      ┃
+┃ DreamHack 2014 Challengers (Holo-Foil)                  ┃
+┃ Sticker | DreamHack (Holo) | Cluj-Napoca 2015           ┃
+...
+```
+
+**Method 2: Quick Python Script**
+```bash
+python -c "
+import requests
+data = requests.get('https://prices.csgotrader.app/latest/buff163.json').json()
+results = [k for k in data.keys() if 'your_search_term' in k.lower()]
+for r in results[:20]:
+    print(r)
+"
+```
+
+### Common Name Format Patterns
+
+- **Weapons**: `WeaponType | SkinName (Condition)`
+  - Example: `AK-47 | Redline (Field-Tested)`
+  
+- **Knives**: `★ KnifeType | SkinName (Condition)`
+  - Example: `★ Karambit | Doppler (Factory New)`
+  
+- **Stickers**: `Sticker | Name | Tournament Year`
+  - Example: `Sticker | Titan (Holo) | Katowice 2014`
+  
+- **Capsules/Cases**: `Name Year Type`
+  - Example: `Krakow 2017 Challengers Autograph Capsule`
+  
+- **Tournament Items**: `Tournament Year Category (Type)`
+  - Example: `DreamHack 2014 Legends (Holo-Foil)`
+
+### Troubleshooting Item Names
+
+If an item shows as **⚫ ERR** or **N/A** in the tracker:
+
+1. Search for the item in buff163.py to verify the exact name
+2. Copy the exact name (including spaces, dashes, and special characters)
+3. Update your `SKINS` list in the tracker script
+4. Common issues:
+   - Missing year: "DreamHack Legends" → "DreamHack 2014 Legends"
+   - Incomplete name: "Krakow Autograph" → "Krakow 2017 Challengers Autograph Capsule"
+   - Wrong separators: Use ` | ` (space-pipe-space) for weapon skins
+
 ## Configuration
 
 ### Arbitrage Tracker
