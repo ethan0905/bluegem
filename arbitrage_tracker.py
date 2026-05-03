@@ -19,8 +19,8 @@ console = Console()
 # Items to monitor - using common items with active listings
 SKINS = [
     "Operation Breakout Weapon Case",
-    "AK-47 | Redline (Field-Tested)",
-    "AWP | Asiimov (Field-Tested)"
+    "Krakow 2017 Challengers Autograph Capsule",
+    "DreamHack 2014 Legends (Holo-Foil)"
 ]
 
 # Rate limiting delays
